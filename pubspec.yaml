@@ -1,0 +1,39 @@
+name: justpaste
+description: "Just Paste - Convert files, photos & text into flashcards and tables using AI"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^2.0.0
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  google_sign_in: ^6.2.2
+  cloud_firestore: ^6.10.0
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  http: ^1.2.2
+  google_generative_ai: ^0.4.6
+  flutter_dotenv: ^6.0.1
+  google_fonts: ^8.2.1
+  appinio_swiper: ^2.1.0
+  shimmer: ^3.0.0
+  archive: ^4.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
