@@ -42,3 +42,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase / Google Services - contain API keys (keep locally, do not commit)
+**/google-services.json
+lib/firebase_options.dart
+
+# Repomix output dumps (may contain secrets)
+repomix-output.txt
+repomix-output.xml
