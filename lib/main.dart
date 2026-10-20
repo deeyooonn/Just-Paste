@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
@@ -10,16 +9,33 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shimmer/shimmer.dart';
 
 import 'firebase_options.dart';
 import 'gemini_flashcard_service.dart';
+import 'ui/nocturne_theme.dart';
+import 'ui/login_screen.dart';
+import 'ui/dashboard_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: NocturneTheme.background,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+  LicenseRegistry.addLicense(() async* {
+    for (final family in ['Inter', 'CormorantGaramond']) {
+      yield LicenseEntryWithLineBreaks([
+        family,
+      ], await rootBundle.loadString('assets/fonts/$family-OFL.txt'));
+    }
+  });
 
   try {
     await dotenv.load(fileName: ".env");
@@ -39,136 +55,6 @@ void main() async {
 }
 
 // -----------------------------------------------------------------------------
-// CLEAN MODERN DARK MODE THEME & PALETTE
-// -----------------------------------------------------------------------------
-class CleanDarkTheme {
-  static const Color bgNavy = Color(0xFF0D1117);
-  static const Color surfaceCard = Color(0xFF161B22);
-  static const Color surfaceBorder = Color(0xFF30363D);
-  static const Color cyanAccent = Color(0xFF00E5FF);
-  static const Color goldAccent = Color(0xFFFFC107);
-  static const Color textPrimary = Color(0xFFF0F6FC);
-  static const Color textSecondary = Color(0xFF8B949E);
-  static const Color errorRed = Color(0xFFF85149);
-
-  static ThemeData get theme {
-    final baseTextTheme = GoogleFonts.interTextTheme(ThemeData.dark().textTheme);
-
-    return ThemeData.dark().copyWith(
-      scaffoldBackgroundColor: bgNavy,
-      primaryColor: cyanAccent,
-      colorScheme: const ColorScheme.dark(
-        primary: cyanAccent,
-        surface: surfaceCard,
-        error: errorRed,
-      ),
-      textTheme: baseTextTheme,
-      appBarTheme: AppBarTheme(
-        backgroundColor: bgNavy,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: GoogleFonts.inter(
-          color: textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-        ),
-        iconTheme: const IconThemeData(color: cyanAccent),
-      ),
-      cardTheme: CardThemeData(
-        color: surfaceCard,
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: surfaceBorder, width: 1.0),
-        ),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: cyanAccent,
-          foregroundColor: bgNavy,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: textPrimary,
-          side: const BorderSide(color: surfaceBorder, width: 1.0),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-      ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: cyanAccent,
-        foregroundColor: bgNavy,
-        elevation: 4,
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// CUSTOM PAINTER: SUBTLE CIRCUIT & DOT PATTERN BACKGROUND
-// -----------------------------------------------------------------------------
-class CircuitPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final dotPaint = Paint()
-      ..color = CleanDarkTheme.cyanAccent.withValues(alpha: 0.05)
-      ..style = PaintingStyle.fill;
-
-    final linePaint = Paint()
-      ..color = CleanDarkTheme.cyanAccent.withValues(alpha: 0.04)
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-
-    const double spacing = 36.0;
-
-    for (double x = spacing / 2; x < size.width; x += spacing) {
-      for (double y = spacing / 2; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), 1.2, dotPaint);
-      }
-    }
-
-    final random = Random(42);
-    for (int i = 0; i < 18; i++) {
-      final startX = (random.nextInt((size.width / spacing).floor()) * spacing) + spacing / 2;
-      final startY = (random.nextInt((size.height / spacing).floor()) * spacing) + spacing / 2;
-
-      final path = Path()..moveTo(startX, startY);
-      double currentX = startX;
-      double currentY = startY;
-
-      for (int step = 0; step < 3; step++) {
-        if (random.nextBool()) {
-          currentX += (random.nextBool() ? spacing : -spacing);
-        } else {
-          currentY += (random.nextBool() ? spacing : -spacing);
-        }
-        path.lineTo(currentX, currentY);
-      }
-      canvas.drawPath(path, linePaint);
-      canvas.drawCircle(Offset(currentX, currentY), 2.0, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// -----------------------------------------------------------------------------
 // DATA MODELS (FLASHCARDS ONLY)
 // -----------------------------------------------------------------------------
 class Flashcard {
@@ -177,10 +63,7 @@ class Flashcard {
 
   Flashcard({required this.question, required this.answer});
 
-  Map<String, dynamic> toJson() => {
-        'question': question,
-        'answer': answer,
-      };
+  Map<String, dynamic> toJson() => {'question': question, 'answer': answer};
 
   factory Flashcard.fromJson(Map<String, dynamic> json) {
     return Flashcard(
@@ -236,63 +119,134 @@ class JustPasteApp extends StatelessWidget {
     return MaterialApp(
       title: 'Just Paste',
       debugShowCheckedModeBanner: false,
-      theme: CleanDarkTheme.theme,
+      theme: NocturneTheme.theme,
       home: const AuthGate(),
     );
   }
 }
 
-// -----------------------------------------------------------------------------
-// AUTH GATE & BYPASS
-// -----------------------------------------------------------------------------
+// Signed-out and legacy anonymous sessions must authenticate before entering.
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+  final Stream<User?>? authStateChanges;
+  final Future<void> Function()? onSignIn;
+
+  const AuthGate({super.key, this.authStateChanges, this.onSignIn});
 
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
 
 class _AuthGateState extends State<AuthGate> {
+  late Stream<User?> _authChanges;
+
   @override
   void initState() {
     super.initState();
-    _autoSignInAnonymous();
+    _connectAuth();
   }
 
-  Future<void> _autoSignInAnonymous() async {
+  void _connectAuth() {
     try {
-      if (FirebaseAuth.instance.currentUser == null) {
-        await FirebaseAuth.instance.signInAnonymously();
-      }
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'configuration-not-found') {
-        debugPrint("Anonymous Auth note: not configured in Firebase Console.");
-      } else {
-        debugPrint("Auto sign-in note: ${e.message}");
-      }
-    } catch (e) {
-      debugPrint("Auto sign-in note: $e");
+      _authChanges =
+          widget.authStateChanges ?? FirebaseAuth.instance.authStateChanges();
+    } catch (error) {
+      _authChanges = Stream<User?>.error(error);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        return MainDashboardScreen(user: snapshot.data);
-      },
+  Future<void> _signIn() async {
+    if (widget.onSignIn != null) {
+      await widget.onSignIn!();
+      return;
+    }
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      if (!mounted) return;
+      setState(_connectAuth);
+    }
+    if (kIsWeb) {
+      await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+      return;
+    }
+    final googleSignIn = GoogleSignIn(
+      serverClientId: dotenv.isInitialized
+          ? dotenv.env['GOOGLE_CLIENT_ID']
+          : null,
+    );
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) return;
+    final googleAuth = await googleUser.authentication;
+    await FirebaseAuth.instance.signInWithCredential(
+      GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<User?>(
+    stream: _authChanges,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Scaffold(
+          body: NightBackdrop(
+            child: Center(
+              child: CircularProgressIndicator(
+                semanticsLabel: 'Checking your sign-in',
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+        );
+      }
+      final user = snapshot.data;
+      if (!snapshot.hasError && user != null && !user.isAnonymous) {
+        return _SignedInNavigator(key: ValueKey(user.uid), user: user);
+      }
+      return LoginScreen(
+        onSignIn: _signIn,
+        connectionError: snapshot.hasError
+            ? 'We couldn’t connect to your account. Please try signing in again.'
+            : null,
+      );
+    },
+  );
+}
+
+// Discard all protected routes when authentication changes or the user signs out.
+class _SignedInNavigator extends StatefulWidget {
+  final User user;
+  const _SignedInNavigator({super.key, required this.user});
+
+  @override
+  State<_SignedInNavigator> createState() => _SignedInNavigatorState();
+}
+
+class _SignedInNavigatorState extends State<_SignedInNavigator> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  Widget build(BuildContext context) => NavigatorPopHandler<Object?>(
+    onPopWithResult: (result) => _navigatorKey.currentState!.pop(result),
+    child: Navigator(
+      key: _navigatorKey,
+      onGenerateRoute: (_) => MaterialPageRoute<void>(
+        builder: (_) => MainDashboardScreen(user: widget.user),
+      ),
+    ),
+  );
 }
 
 // -----------------------------------------------------------------------------
 // MAIN DASHBOARD (FLASHCARDS SCANNING & UPLOAD)
 // -----------------------------------------------------------------------------
 class MainDashboardScreen extends StatefulWidget {
-  final User? user;
+  final User user;
 
-  const MainDashboardScreen({super.key, this.user});
+  const MainDashboardScreen({super.key, required this.user});
 
   @override
   State<MainDashboardScreen> createState() => _MainDashboardScreenState();
@@ -300,60 +254,31 @@ class MainDashboardScreen extends StatefulWidget {
 
 class _MainDashboardScreenState extends State<MainDashboardScreen> {
   bool _isProcessing = false;
-  String _processingMessage = "Scanning Document with Gemini AI...";
+  String _processingMessage = 'Finding the key ideas in your notes…';
 
   // 10MB Maximum File Size Constant
   static const int maxFileSizeBytes = 10 * 1024 * 1024; // 10,485,760 bytes
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(color: Colors.white)),
-        backgroundColor: CleanDarkTheme.errorRed,
+        content: Text(
+          message,
+          style: const TextStyle(color: NocturneTheme.background),
+        ),
+        backgroundColor: NocturneTheme.error,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   String get _geminiApiKey {
-    return dotenv.env['GEMINI_API_KEY'] ?? '';
+    return dotenv.isInitialized ? dotenv.env['GEMINI_API_KEY'] ?? '' : '';
   }
 
   String get _currentUserId {
-    return widget.user?.uid ?? 'guest_user';
-  }
-
-  Future<void> _signInWithGoogle() async {
-    try {
-      final googleClientId = dotenv.env['GOOGLE_CLIENT_ID'];
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: kIsWeb ? googleClientId : null,
-        serverClientId: kIsWeb ? null : googleClientId,
-      );
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      if (googleUser == null) return;
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await FirebaseAuth.instance.signInWithCredential(credential);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Signed in successfully!'),
-            backgroundColor: CleanDarkTheme.cyanAccent,
-          ),
-        );
-      }
-    } catch (e) {
-      _showErrorSnackBar("Sign-In error: ${e.toString()}");
-    }
+    return widget.user.uid;
   }
 
   // ---------------------------------------------------------------------------
@@ -364,24 +289,29 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     Uint8List? imageBytes,
     String? mimeType,
   }) async {
+    if (!mounted || _isProcessing) return;
     final apiKey = _geminiApiKey;
     if (apiKey.isEmpty || apiKey == 'YOUR_GEMINI_API_KEY_HERE') {
       _showErrorSnackBar(
-          'Please configure a valid GEMINI_API_KEY in your .env file!');
+        'Flashcard creation is unavailable right now. Please try again later.',
+      );
       return;
     }
 
     // FILE SIZE VALIDATION (10MB LIMIT)
     if (imageBytes != null && imageBytes.lengthInBytes > maxFileSizeBytes) {
-      final sizeMB = (imageBytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1);
+      final sizeMB = (imageBytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(
+        1,
+      );
       _showErrorSnackBar(
-          'File exceeds the 10MB limit (Selected: ${sizeMB}MB). Please upload a smaller file.');
+        'File exceeds the 10MB limit (Selected: ${sizeMB}MB). Please upload a smaller file.',
+      );
       return;
     }
 
     setState(() {
       _isProcessing = true;
-      _processingMessage = "Extracting Concepts & Synthesizing Flashcards...";
+      _processingMessage = 'Turning your material into thoughtful flashcards…';
     });
 
     try {
@@ -410,7 +340,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       );
     } catch (e) {
       _showErrorSnackBar(
-          "Processing Error: ${e.toString().replaceFirst('Exception: ', '')}");
+        'We couldn’t create flashcards from this material. Check your connection or try a shorter passage.',
+      );
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -431,9 +362,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       if (photo != null) {
         final bytes = await photo.readAsBytes();
         if (bytes.lengthInBytes > maxFileSizeBytes) {
-          final sizeMB = (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(1);
+          final sizeMB = (bytes.lengthInBytes / (1024 * 1024)).toStringAsFixed(
+            1,
+          );
           _showErrorSnackBar(
-              'Captured image exceeds 10MB limit (${sizeMB}MB). Please try again.');
+            'Captured image exceeds 10MB limit (${sizeMB}MB). Please try again.',
+          );
           return;
         }
         final mime = photo.mimeType ?? 'image/jpeg';
@@ -459,12 +393,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         if (file.size > maxFileSizeBytes) {
           final sizeMB = (file.size / (1024 * 1024)).toStringAsFixed(1);
           _showErrorSnackBar(
-              'Selected file exceeds the 10MB limit (${sizeMB}MB). Please select a smaller file.');
+            'Selected file exceeds the 10MB limit (${sizeMB}MB). Please select a smaller file.',
+          );
           return;
         }
 
         final extension = file.extension?.toLowerCase() ?? '';
-        final bytes = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
+        final bytes =
+            file.bytes ??
+            (file.path != null ? await File(file.path!).readAsBytes() : null);
 
         if (bytes == null) {
           _showErrorSnackBar("Could not read content from selected file.");
@@ -499,328 +436,27 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  Future<void> _pasteClipboard() async {
-    try {
-      final ClipboardData? data =
-          await Clipboard.getData(Clipboard.kTextPlain);
-      if (data != null && data.text != null && data.text!.trim().isNotEmpty) {
-        await _processInputData(rawText: data.text);
-      } else {
-        _showErrorSnackBar("Clipboard is empty or contains no text!");
-      }
-    } catch (e) {
-      _showErrorSnackBar("Clipboard paste error: $e");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isSignedIn = widget.user != null && !widget.user!.isAnonymous;
-    final photoUrl = widget.user?.photoURL;
-    final displayName = widget.user?.displayName ?? widget.user?.email ?? 'User';
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: CircuitPatternPainter(),
-            ),
-          ),
-
-          SafeArea(
-            child: Column(
-              children: [
-                // -------------------------------------------------------------
-                // TOP BAR WITH APP TITLE & PROFILE AVATAR
-                // -------------------------------------------------------------
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: CleanDarkTheme.surfaceBorder, width: 1.0),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: CleanDarkTheme.surfaceCard,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: CleanDarkTheme.surfaceBorder),
-                        ),
-                        child: const Icon(
-                          Icons.content_paste_rounded,
-                          size: 20,
-                          color: CleanDarkTheme.cyanAccent,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Just Paste',
-                        style: GoogleFonts.inter(
-                          color: CleanDarkTheme.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const Spacer(),
-
-                      if (!isSignedIn) ...[
-                        OutlinedButton(
-                          onPressed: _signInWithGoogle,
-                          child: const Text('Sign In'),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: _signInWithGoogle,
-                          child: const Text('Get Started'),
-                        ),
-                      ] else ...[
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ProfileScreen(user: widget.user!),
-                              ),
-                            );
-                          },
-                          child: Tooltip(
-                            message: 'View Profile & Saved Library',
-                            child: UserAvatarWidget(
-                              photoUrl: photoUrl,
-                              displayName: displayName,
-                              radius: 18,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 16),
-
-                        // STEP INDICATOR PILL (AI FLASHCARDS ONLY)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: CleanDarkTheme.surfaceCard,
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(color: CleanDarkTheme.surfaceBorder),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: CleanDarkTheme.cyanAccent,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '1',
-                                  style: GoogleFonts.inter(
-                                    color: CleanDarkTheme.bgNavy,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Paste or Upload File',
-                                style: GoogleFonts.inter(
-                                  color: CleanDarkTheme.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Icon(Icons.arrow_forward_rounded,
-                                  color: CleanDarkTheme.textSecondary, size: 16),
-                              const SizedBox(width: 12),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: CleanDarkTheme.surfaceBorder,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '2',
-                                  style: GoogleFonts.inter(
-                                    color: CleanDarkTheme.textPrimary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'AI Flashcards',
-                                style: GoogleFonts.inter(
-                                  color: CleanDarkTheme.textSecondary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // MAIN DROPZONE CONTAINER (10MB MAX NOTICE)
-                        GestureDetector(
-                          onTap: _pickFileOrGallery,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 52, horizontal: 24),
-                            decoration: BoxDecoration(
-                              color: CleanDarkTheme.surfaceCard,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: CleanDarkTheme.cyanAccent.withValues(alpha: 0.6),
-                                width: 1.2,
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(18),
-                                  decoration: BoxDecoration(
-                                    color: CleanDarkTheme.bgNavy,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: CleanDarkTheme.surfaceBorder),
-                                  ),
-                                  child: const Icon(
-                                    Icons.cloud_upload_outlined,
-                                    size: 40,
-                                    color: CleanDarkTheme.cyanAccent,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  'Tap or Drop Document Here',
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.inter(
-                                    color: CleanDarkTheme.textPrimary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Upload screenshots, photos, PDF, DOCX, TXT, or paste clipboard (Max 10MB)',
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.inter(
-                                    color: CleanDarkTheme.textSecondary,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    _CleanChip(label: 'PDF'),
-                                    _CleanChip(label: 'DOCX'),
-                                    _CleanChip(label: 'TXT'),
-                                    _CleanChip(label: 'PNG'),
-                                    _CleanChip(label: 'JPG'),
-                                    _CleanChip(label: 'WEBP'),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // FLAT BOTTOM ACTION CARDS
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _FlatActionCard(
-                                icon: Icons.camera_alt_outlined,
-                                label: 'Camera',
-                                onTap: _pickImageFromCamera,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _FlatActionCard(
-                                icon: Icons.folder_open_outlined,
-                                label: 'Gallery/Doc',
-                                onTap: _pickFileOrGallery,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _FlatActionCard(
-                                icon: Icons.content_paste_outlined,
-                                label: 'Clipboard',
-                                onTap: _pasteClipboard,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // LOADING OVERLAY
-          if (_isProcessing)
-            Container(
-              color: Colors.black.withValues(alpha: 0.8),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(
-                        color: CleanDarkTheme.surfaceCard,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const CircularProgressIndicator(
-                        color: CleanDarkTheme.cyanAccent,
-                        strokeWidth: 3,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      _processingMessage,
-                      style: GoogleFonts.inter(
-                        color: CleanDarkTheme.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Powered by Gemini AI Engine',
-                      style: GoogleFonts.inter(
-                        color: CleanDarkTheme.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
+    final displayName = widget.user.displayName ?? 'Curious mind';
+    return DashboardView(
+      displayName: displayName,
+      avatar: UserAvatarWidget(
+        photoUrl: widget.user.photoURL,
+        displayName: displayName,
+        radius: 17,
       ),
+      onLibrary: () => Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => ProfileScreen(user: widget.user),
+        ),
+      ),
+      onCamera: _pickImageFromCamera,
+      onImport: _pickFileOrGallery,
+      onGenerate: (text) => _processInputData(rawText: text),
+      isProcessing: _isProcessing,
+      processingMessage: _processingMessage,
     );
   }
 }
@@ -830,8 +466,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 // -----------------------------------------------------------------------------
 class ProfileScreen extends StatefulWidget {
   final User user;
-
-  const ProfileScreen({super.key, required this.user});
+  final Stream<List<ProcessedDocument>>? documents;
+  const ProfileScreen({super.key, required this.user, this.documents});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -839,466 +475,253 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String _searchQuery = '';
-  int _selectedTab = 0; // 0: All Scans, 1: Bookmarked Only
+  bool _bookmarksOnly = false;
+  bool _isSigningOut = false;
+  late Stream<List<ProcessedDocument>> _documents;
 
-  void _toggleBookmark(String docId, bool currentStatus) async {
+  @override
+  void initState() {
+    super.initState();
+    _connectLibrary();
+  }
+
+  void _connectLibrary() {
+    _documents =
+        widget.documents ??
+        FirebaseFirestore.instance
+            .collection('user_documents')
+            .where('userId', isEqualTo: widget.user.uid)
+            .snapshots()
+            .map(
+              (snapshot) =>
+                  snapshot.docs.map(ProcessedDocument.fromFirestore).toList(),
+            );
+  }
+
+  Future<void> _toggleBookmark(ProcessedDocument document) async {
     try {
       await FirebaseFirestore.instance
           .collection('user_documents')
-          .doc(docId)
-          .update({'isBookmarked': !currentStatus});
-    } catch (e) {
-      debugPrint("Toggle bookmark error: $e");
+          .doc(document.id)
+          .update({'isBookmarked': !document.isBookmarked});
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Couldn’t update this bookmark. Please try again.'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _signOut() async {
+    setState(() => _isSigningOut = true);
+    try {
+      await FirebaseAuth.instance.signOut();
+      // AuthGate clears this entire navigation stack.
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Couldn’t sign out. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSigningOut = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final photoUrl = widget.user.photoURL;
-    final displayName = widget.user.displayName ?? widget.user.email ?? 'User';
-    final email = widget.user.email ?? (widget.user.isAnonymous ? 'Guest User' : 'No email');
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16.0, top: 10.0, bottom: 10.0),
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Tooltip(
-              message: 'Back to Dashboard',
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: CleanDarkTheme.surfaceCard,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: CleanDarkTheme.surfaceBorder),
-                ),
-                child: const Icon(
-                  Icons.content_paste_rounded,
-                  size: 18,
-                  color: CleanDarkTheme.cyanAccent,
-                ),
-              ),
-            ),
-          ),
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('Your library'),
+      actions: [
+        IconButton(
+          tooltip: 'Sign out',
+          onPressed: _isSigningOut ? null : _signOut,
+          icon: _isSigningOut
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.logout_rounded, size: 21),
         ),
-        title: const Text('Account & Saved Library'),
-        centerTitle: true,
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: CircuitPatternPainter(),
-            ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
+        const SizedBox(width: 12),
+      ],
+    ),
+    body: NightBackdrop(
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // BACK TO DASHBOARD BUTTON
-                  TextButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 16, color: CleanDarkTheme.textSecondary),
-                    label: Text(
-                      'Back to Dashboard',
-                      style: GoogleFonts.inter(
-                        color: CleanDarkTheme.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // USER PROFILE CARD
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: CleanDarkTheme.surfaceCard,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: CleanDarkTheme.surfaceBorder),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            UserAvatarWidget(
-                              photoUrl: photoUrl,
-                              displayName: displayName,
-                              radius: 30,
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          displayName,
-                                          style: GoogleFonts.inter(
-                                            color: CleanDarkTheme.textPrimary,
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: CleanDarkTheme.cyanAccent.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: CleanDarkTheme.cyanAccent.withValues(alpha: 0.4)),
-                                        ),
-                                        child: Text(
-                                          'FREE',
-                                          style: GoogleFonts.inter(
-                                            color: CleanDarkTheme.cyanAccent,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 10,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    email,
-                                    style: GoogleFonts.inter(
-                                      color: CleanDarkTheme.textSecondary,
-                                      fontSize: 12,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: CleanDarkTheme.textSecondary,
-                                side: const BorderSide(color: CleanDarkTheme.surfaceBorder),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              ),
-                              onPressed: () async {
-                                await FirebaseAuth.instance.signOut();
-                                if (context.mounted) Navigator.pop(context);
-                              },
-                              icon: const Icon(Icons.logout_rounded, size: 16),
-                              label: const Text('Sign out', style: TextStyle(fontSize: 12)),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // USAGE & ANALYTICS SECTION
-                  Text(
-                    'USAGE & CONVERSIONS',
-                    style: GoogleFonts.inter(
-                      color: CleanDarkTheme.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('user_documents')
-                        .where('userId', isEqualTo: widget.user.uid)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      final totalScans = snapshot.data?.docs.length ?? 0;
-                      final bookmarkedScans = snapshot.data?.docs.where((doc) {
-                            final data = doc.data() as Map<String, dynamic>? ?? {};
-                            return data['isBookmarked'] as bool? ?? false;
-                          }).length ??
-                          0;
-
-                      int totalCards = 0;
-                      if (snapshot.hasData) {
-                        for (var doc in snapshot.data!.docs) {
-                          final data = doc.data() as Map<String, dynamic>? ?? {};
-                          final cards = data['flashcards'] as List? ?? [];
-                          totalCards += cards.length;
-                        }
-                      }
-
-                      return Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatCard(
-                                  title: 'Total Scans',
-                                  value: '$totalScans',
-                                  icon: Icons.auto_awesome,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _StatCard(
-                                  title: 'Bookmarked',
-                                  value: '$bookmarkedScans',
-                                  icon: Icons.star_rounded,
-                                  color: CleanDarkTheme.goldAccent,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatCard(
-                                  title: 'Flashcards Generated',
-                                  value: '$totalCards',
-                                  icon: Icons.style_rounded,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _StatCard(
-                                  title: 'Free Conversions',
-                                  value: 'Unlimited',
-                                  icon: Icons.all_inclusive_rounded,
-                                  color: CleanDarkTheme.cyanAccent,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // SAVED FLASHCARD DECKS HEADER
-                  Text(
-                    'SAVED FLASHCARD DECKS',
-                    style: GoogleFonts.inter(
-                      color: CleanDarkTheme.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // SEARCH BAR
-                  TextField(
-                    onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
-                    style: GoogleFonts.inter(color: CleanDarkTheme.textPrimary, fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Search saved flashcard decks...',
-                      hintStyle: GoogleFonts.inter(color: CleanDarkTheme.textSecondary, fontSize: 13),
-                      prefixIcon: const Icon(Icons.search, color: CleanDarkTheme.textSecondary, size: 20),
-                      filled: true,
-                      fillColor: CleanDarkTheme.surfaceCard,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: CleanDarkTheme.surfaceBorder),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: CleanDarkTheme.surfaceBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: CleanDarkTheme.cyanAccent),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // SUB TABS: ALL SCANS vs BOOKMARKED
                   Row(
                     children: [
-                      _FilterTabButton(
-                        label: 'All Decks',
-                        isSelected: _selectedTab == 0,
-                        onTap: () => setState(() => _selectedTab = 0),
+                      UserAvatarWidget(
+                        photoUrl: widget.user.photoURL,
+                        displayName: widget.user.displayName ?? 'You',
+                        radius: 22,
                       ),
-                      const SizedBox(width: 8),
-                      _FilterTabButton(
-                        label: '⭐ Bookmarked',
-                        isSelected: _selectedTab == 1,
-                        onTap: () => setState(() => _selectedTab = 1),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.user.displayName ?? 'Your account',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (widget.user.email != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.user.email!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: NocturneTheme.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 30),
+                  const Text(
+                    'YOUR PERSONAL ARCHIVE',
+                    style: NocturneTheme.eyebrow,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Knowledge, collected.',
+                    style: NocturneTheme.heading.copyWith(fontSize: 40),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Return to the ideas worth remembering.',
+                    style: TextStyle(
+                      color: NocturneTheme.muted,
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+                  TextField(
+                    onChanged: (value) => setState(
+                      () => _searchQuery = value.trim().toLowerCase(),
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'Search your collection',
+                      prefixIcon: Icon(Icons.search_rounded),
+                    ),
+                  ),
                   const SizedBox(height: 16),
-
-                  // FIRESTORE HISTORY STREAM WITH SKELETON LOADERS
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('user_documents')
-                        .where('userId', isEqualTo: widget.user.uid)
-                        .snapshots(),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('All decks'),
+                        selected: !_bookmarksOnly,
+                        onSelected: (_) =>
+                            setState(() => _bookmarksOnly = false),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Bookmarked'),
+                        selected: _bookmarksOnly,
+                        onSelected: (_) =>
+                            setState(() => _bookmarksOnly = true),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  StreamBuilder<List<ProcessedDocument>>(
+                    stream: _documents,
                     builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return _libraryNotice(
+                          'Your collection is out of reach',
+                          'Check your connection and try loading it again.',
+                          action: TextButton(
+                            onPressed: () => setState(_connectLibrary),
+                            child: const Text('Try again'),
+                          ),
+                        );
+                      }
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: 4,
-                          itemBuilder: (context, index) => const _SkeletonCardLoader(),
-                        );
-                      }
-
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: CleanDarkTheme.surfaceCard,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: CleanDarkTheme.surfaceBorder),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.style_outlined, size: 40, color: CleanDarkTheme.textSecondary),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No saved flashcard decks found',
-                                style: GoogleFonts.inter(
-                                  color: CleanDarkTheme.textPrimary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Flashcard decks you generate will appear here in real-time.',
-                                style: GoogleFonts.inter(
-                                  color: CleanDarkTheme.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                        return const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         );
                       }
-
-                      var docs = snapshot.data!.docs.map((d) => ProcessedDocument.fromFirestore(d)).toList();
-
-                      if (_selectedTab == 1) {
-                        docs = docs.where((d) => d.isBookmarked).toList();
-                      }
-
-                      if (_searchQuery.isNotEmpty) {
-                        docs = docs.where((d) {
-                          final titleMatch = d.title.toLowerCase().contains(_searchQuery);
-                          final cardMatch = d.flashcards.any((c) =>
-                              c.question.toLowerCase().contains(_searchQuery) ||
-                              c.answer.toLowerCase().contains(_searchQuery));
-                          return titleMatch || cardMatch;
-                        }).toList();
-                      }
-
-                      if (docs.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Text(
-                            'No flashcard decks matching search/filter.',
-                            style: GoogleFonts.inter(color: CleanDarkTheme.textSecondary),
+                      final all = snapshot.data ?? [];
+                      if (all.isEmpty) {
+                        return _libraryNotice(
+                          'Your collection starts here',
+                          'Create a deck, then save it to keep your discoveries close.',
+                          action: TextButton.icon(
+                            onPressed: () => Navigator.maybePop(context),
+                            icon: const Icon(Icons.add_rounded),
+                            label: const Text('Create your first deck'),
                           ),
                         );
                       }
-
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final docData = docs[index];
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: CleanDarkTheme.bgNavy,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.style_rounded,
-                                  color: CleanDarkTheme.cyanAccent,
-                                  size: 20,
-                                ),
-                              ),
-                              title: Text(
-                                docData.title,
-                                style: GoogleFonts.inter(
-                                  color: CleanDarkTheme.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                '${docData.flashcards.length} Flashcards',
-                                style: GoogleFonts.inter(
-                                  color: CleanDarkTheme.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    tooltip: docData.isBookmarked ? 'Remove Bookmark' : 'Bookmark',
-                                    icon: Icon(
-                                      docData.isBookmarked ? Icons.star_rounded : Icons.star_outline_rounded,
-                                      color: docData.isBookmarked
-                                          ? CleanDarkTheme.goldAccent
-                                          : CleanDarkTheme.textSecondary,
-                                    ),
-                                    onPressed: () => _toggleBookmark(docData.id, docData.isBookmarked),
-                                  ),
-                                  const Icon(
-                                    Icons.chevron_right_rounded,
-                                    color: CleanDarkTheme.cyanAccent,
-                                  ),
-                                ],
-                              ),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ResultsScreen(
-                                      title: docData.title,
-                                      flashcards: docData.flashcards,
-                                      userId: widget.user.uid,
-                                      isSaved: true,
-                                    ),
-                                  ),
+                      final cards = all.fold<int>(
+                        0,
+                        (total, doc) => total + doc.flashcards.length,
+                      );
+                      final filtered =
+                          all.where((doc) {
+                            if (_bookmarksOnly && !doc.isBookmarked) {
+                              return false;
+                            }
+                            return doc.title.toLowerCase().contains(
+                                  _searchQuery,
+                                ) ||
+                                doc.flashcards.any(
+                                  (card) =>
+                                      card.question.toLowerCase().contains(
+                                        _searchQuery,
+                                      ) ||
+                                      card.answer.toLowerCase().contains(
+                                        _searchQuery,
+                                      ),
                                 );
-                              },
-                            ),
+                          }).toList()..sort(
+                            (a, b) => b.createdAt.compareTo(a.createdAt),
                           );
-                        },
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${all.length} saved decks  ·  $cards flashcards',
+                            style: const TextStyle(
+                              color: NocturneTheme.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          if (filtered.isEmpty)
+                            _libraryNotice(
+                              'No discoveries here yet',
+                              _bookmarksOnly
+                                  ? 'Bookmark a deck to find it here.'
+                                  : 'Try another title or a word from your cards.',
+                            )
+                          else
+                            ...filtered.map(_deckTile),
+                        ],
                       );
                     },
                   ),
@@ -1306,10 +729,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-        ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+
+  Widget _libraryNotice(String title, String description, {Widget? action}) =>
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: NocturneTheme.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: NocturneTheme.border),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.collections_bookmark_outlined,
+              size: 32,
+              color: NocturneTheme.accent,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: NocturneTheme.heading.copyWith(fontSize: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: NocturneTheme.muted,
+                fontSize: 13,
+                height: 1.6,
+              ),
+            ),
+            if (action != null) ...[const SizedBox(height: 16), action],
+          ],
+        ),
+      );
+
+  Widget _deckTile(ProcessedDocument document) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Card(
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 12,
+        ),
+        leading: const Icon(Icons.style_outlined, color: NocturneTheme.accent),
+        title: Text(
+          document.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            '${document.flashcards.length} ${document.flashcards.length == 1 ? 'card' : 'cards'} · ${document.createdAt.day}/${document.createdAt.month}/${document.createdAt.year}',
+            style: const TextStyle(color: NocturneTheme.muted, fontSize: 12),
+          ),
+        ),
+        trailing: IconButton(
+          tooltip: document.isBookmarked ? 'Remove bookmark' : 'Bookmark deck',
+          icon: Icon(
+            document.isBookmarked
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_border_rounded,
+            color: document.isBookmarked
+                ? NocturneTheme.gold
+                : NocturneTheme.muted,
+          ),
+          onPressed: () => _toggleBookmark(document),
+        ),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => ResultsScreen(
+              title: document.title,
+              flashcards: document.flashcards,
+              userId: widget.user.uid,
+              isSaved: true,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -1336,7 +846,7 @@ class UserAvatarWidget extends StatelessWidget {
     if (photoUrl != null && photoUrl!.trim().isNotEmpty) {
       return CircleAvatar(
         radius: radius,
-        backgroundColor: CleanDarkTheme.cyanAccent,
+        backgroundColor: NocturneTheme.accent,
         child: ClipOval(
           child: Image.network(
             photoUrl!,
@@ -1347,12 +857,12 @@ class UserAvatarWidget extends StatelessWidget {
               return Container(
                 width: radius * 2,
                 height: radius * 2,
-                color: CleanDarkTheme.cyanAccent,
+                color: NocturneTheme.accent,
                 alignment: Alignment.center,
                 child: Text(
                   initial,
-                  style: GoogleFonts.inter(
-                    color: CleanDarkTheme.bgNavy,
+                  style: TextStyle(
+                    color: NocturneTheme.background,
                     fontWeight: FontWeight.bold,
                     fontSize: radius * 0.7,
                   ),
@@ -1366,229 +876,13 @@ class UserAvatarWidget extends StatelessWidget {
 
     return CircleAvatar(
       radius: radius,
-      backgroundColor: CleanDarkTheme.cyanAccent,
+      backgroundColor: NocturneTheme.accent,
       child: Text(
         initial,
-        style: GoogleFonts.inter(
-          color: CleanDarkTheme.bgNavy,
+        style: TextStyle(
+          color: NocturneTheme.background,
           fontWeight: FontWeight.bold,
           fontSize: radius * 0.7,
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    this.color = CleanDarkTheme.cyanAccent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: CleanDarkTheme.bgNavy,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: CleanDarkTheme.surfaceBorder),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  value,
-                  style: GoogleFonts.inter(
-                    color: CleanDarkTheme.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    color: CleanDarkTheme.textSecondary,
-                    fontSize: 11,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterTabButton extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _FilterTabButton({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? CleanDarkTheme.cyanAccent : CleanDarkTheme.surfaceCard,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? CleanDarkTheme.cyanAccent : CleanDarkTheme.surfaceBorder,
-          ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            color: isSelected ? CleanDarkTheme.bgNavy : CleanDarkTheme.textPrimary,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SkeletonCardLoader extends StatelessWidget {
-  const _SkeletonCardLoader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: CleanDarkTheme.surfaceCard,
-      highlightColor: CleanDarkTheme.surfaceBorder,
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Container(
-          height: 64,
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 140,
-                      height: 12,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      width: 90,
-                      height: 10,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CleanChip extends StatelessWidget {
-  final String label;
-
-  const _CleanChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: CleanDarkTheme.bgNavy,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: CleanDarkTheme.surfaceBorder),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.inter(
-          color: CleanDarkTheme.textSecondary,
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-}
-
-class _FlatActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _FlatActionCard({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: CleanDarkTheme.surfaceCard,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: CleanDarkTheme.surfaceBorder),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: CleanDarkTheme.cyanAccent, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                color: CleanDarkTheme.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -1627,7 +921,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   }
 
   Future<void> _saveToFirestore() async {
-    if (_alreadySaved) return;
+    if (_alreadySaved || _isSaving) return;
 
     setState(() => _isSaving = true);
     try {
@@ -1639,13 +933,17 @@ class _ResultsScreenState extends State<ResultsScreen> {
         'isBookmarked': false,
       });
 
+      if (!mounted) return;
       setState(() => _alreadySaved = true);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Flashcard deck saved to your cloud library!'),
-            backgroundColor: CleanDarkTheme.cyanAccent,
+            content: Text(
+              'Saved. Your discovery is waiting in your library.',
+              style: TextStyle(color: NocturneTheme.background),
+            ),
+            backgroundColor: NocturneTheme.accent,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1654,8 +952,11 @@ class _ResultsScreenState extends State<ResultsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Save error: $e'),
-            backgroundColor: CleanDarkTheme.errorRed,
+            content: const Text(
+              'Couldn’t save this deck. Please try again.',
+              style: TextStyle(color: NocturneTheme.background),
+            ),
+            backgroundColor: NocturneTheme.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1666,84 +967,59 @@ class _ResultsScreenState extends State<ResultsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16.0, top: 10.0, bottom: 10.0),
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Tooltip(
-              message: 'Back to Dashboard',
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: CleanDarkTheme.surfaceCard,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: CleanDarkTheme.surfaceBorder),
-                ),
-                child: const Icon(
-                  Icons.content_paste_rounded,
-                  size: 18,
-                  color: CleanDarkTheme.cyanAccent,
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Study deck')),
+    body: NightBackdrop(
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+              child: Text(
+                widget.title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: NocturneTheme.heading.copyWith(
+                  fontSize: 34,
+                  height: 1.1,
                 ),
               ),
             ),
-          ),
+            Expanded(child: _FlashcardsDeckView(flashcards: widget.flashcards)),
+          ],
         ),
-        title: Text(widget.title),
-        centerTitle: true,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 20.0, top: 12.0),
-            child: TextButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back_rounded, size: 16, color: CleanDarkTheme.textSecondary),
-              label: Text(
-                'Back to Dashboard',
-                style: GoogleFonts.inter(
-                  color: CleanDarkTheme.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+    ),
+    bottomNavigationBar: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+        child: ElevatedButton.icon(
+          onPressed: _alreadySaved || _isSaving ? null : _saveToFirestore,
+          icon: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(
+                  _alreadySaved
+                      ? Icons.check_rounded
+                      : Icons.bookmark_add_outlined,
+                  size: 20,
                 ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: _FlashcardsDeckView(flashcards: widget.flashcards),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _alreadySaved ? null : _saveToFirestore,
-        backgroundColor:
-            _alreadySaved ? CleanDarkTheme.surfaceBorder : CleanDarkTheme.cyanAccent,
-        icon: _isSaving
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: CleanDarkTheme.bgNavy,
-                ),
-              )
-            : Icon(
-                _alreadySaved ? Icons.check_circle : Icons.bookmark_add_rounded,
-                color: CleanDarkTheme.bgNavy,
-              ),
-        label: Text(
-          _alreadySaved ? 'Saved to Cloud' : 'Save Deck',
-          style: GoogleFonts.inter(
-            color: CleanDarkTheme.bgNavy,
-            fontWeight: FontWeight.bold,
+          label: Text(
+            _isSaving
+                ? 'Saving…'
+                : _alreadySaved
+                ? 'Saved to your library'
+                : 'Save to library',
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -1751,7 +1027,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
 // -----------------------------------------------------------------------------
 class _FlashcardsDeckView extends StatefulWidget {
   final List<Flashcard> flashcards;
-
   const _FlashcardsDeckView({required this.flashcards});
 
   @override
@@ -1759,363 +1034,226 @@ class _FlashcardsDeckView extends StatefulWidget {
 }
 
 class _FlashcardsDeckViewState extends State<_FlashcardsDeckView> {
-  bool _isSingleView = false;
+  bool _isSingleView = true;
   int _currentIndex = 0;
-  bool _singleShowAnswer = false;
-  final Set<int> _flippedGridIndices = {};
+  final Set<int> _revealed = {};
 
   @override
   Widget build(BuildContext context) {
     if (widget.flashcards.isEmpty) {
-      return const Center(
-        child: Text(
-          'No flashcards generated for this content.',
-          style: TextStyle(color: CleanDarkTheme.textSecondary),
-        ),
-      );
+      return const Center(child: Text('No flashcards in this deck yet.'));
     }
-
     return Column(
       children: [
-        // HEADER TOOLBAR (CARDS COUNT & VIEW TOGGLE)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: Wrap(
+            spacing: 20,
+            runSpacing: 12,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
-                '${widget.flashcards.length} cards generated',
-                style: GoogleFonts.inter(
-                  color: CleanDarkTheme.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                '${widget.flashcards.length} ideas to explore',
+                style: const TextStyle(
+                  color: NocturneTheme.muted,
+                  fontSize: 12,
                 ),
               ),
-
-              // VIEW TOGGLE PILL: GRID | SINGLE
-              Container(
-                decoration: BoxDecoration(
-                  color: CleanDarkTheme.surfaceCard,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: CleanDarkTheme.surfaceBorder),
-                ),
-                child: Row(
-                  children: [
-                    InkWell(
-                      onTap: () => setState(() => _isSingleView = false),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: !_isSingleView ? CleanDarkTheme.surfaceBorder : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Grid',
-                          style: GoogleFonts.inter(
-                            color: !_isSingleView ? CleanDarkTheme.textPrimary : CleanDarkTheme.textSecondary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => setState(() => _isSingleView = true),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _isSingleView ? CleanDarkTheme.surfaceBorder : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Single',
-                          style: GoogleFonts.inter(
-                            color: _isSingleView ? CleanDarkTheme.textPrimary : CleanDarkTheme.textSecondary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              SegmentedButton<bool>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: true,
+                    label: Text('Focus'),
+                    icon: Icon(Icons.crop_portrait_rounded, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: false,
+                    label: Text('Grid'),
+                    icon: Icon(Icons.grid_view_rounded, size: 16),
+                  ),
+                ],
+                selected: {_isSingleView},
+                onSelectionChanged: (selection) =>
+                    setState(() => _isSingleView = selection.first),
+                style: const ButtonStyle(visualDensity: VisualDensity.compact),
               ),
             ],
           ),
         ),
-
-        // MAIN CONTENT (GRID VIEW OR SINGLE VIEW)
         Expanded(
-          child: _isSingleView ? _buildSingleView() : _buildGridView(),
+          child: _isSingleView
+              ? SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Column(
+                        children: [
+                          _card(_currentIndex, focused: true),
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton.filledTonal(
+                                tooltip: 'Previous card',
+                                onPressed: _currentIndex == 0
+                                    ? null
+                                    : () => setState(() => _currentIndex--),
+                                icon: const Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 20,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
+                                child: Text(
+                                  '${_currentIndex + 1} / ${widget.flashcards.length}',
+                                  style: const TextStyle(
+                                    color: NocturneTheme.muted,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              IconButton.filledTonal(
+                                tooltip: 'Next card',
+                                onPressed:
+                                    _currentIndex ==
+                                        widget.flashcards.length - 1
+                                    ? null
+                                    : () => setState(() => _currentIndex++),
+                                icon: const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns = (constraints.maxWidth / 300).floor().clamp(
+                      1,
+                      4,
+                    );
+                    return GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        mainAxisExtent: 280,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: widget.flashcards.length,
+                      itemBuilder: (context, index) => _card(index),
+                    );
+                  },
+                ),
         ),
       ],
     );
   }
 
-  // GRID VIEW (COMPACT BALANCED CARDS WITH FLIP ANIMATION & NON-BLOCKING BOTTOM PADDING)
-  Widget _buildGridView() {
-    return GridView.builder(
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 90),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 360,
-        mainAxisExtent: 220,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: widget.flashcards.length,
-      itemBuilder: (context, index) {
-        final card = widget.flashcards[index];
-        final isFlipped = _flippedGridIndices.contains(index);
-
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              if (isFlipped) {
-                _flippedGridIndices.remove(index);
-              } else {
-                _flippedGridIndices.add(index);
-              }
-            });
-          },
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, animation) {
-              final rotate = Tween(begin: pi, end: 0.0).animate(animation);
-              return AnimatedBuilder(
-                animation: rotate,
-                child: child,
-                builder: (context, widgetChild) {
-                  final isUnder =
-                      (ValueKey(isFlipped) != widgetChild?.key);
-                  var tilt = ((animation.value - 0.5).abs() - 0.5) * 0.003;
-                  tilt *= isUnder ? -1.0 : 1.0;
-                  final value = isUnder
-                      ? min(rotate.value, pi / 2)
-                      : rotate.value;
-                  return Transform(
-                    transform: Matrix4.rotationY(value)..setEntry(3, 2, tilt),
-                    alignment: Alignment.center,
-                    child: widgetChild,
-                  );
-                },
-              );
-            },
-            child: Container(
-              key: ValueKey(isFlipped),
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: CleanDarkTheme.surfaceCard,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isFlipped ? CleanDarkTheme.goldAccent : CleanDarkTheme.surfaceBorder,
-                  width: 1.2,
+  Widget _card(int index, {bool focused = false}) {
+    final revealed = _revealed.contains(index);
+    final card = widget.flashcards[index];
+    final content = revealed ? card.answer : card.question;
+    final accent = revealed ? NocturneTheme.gold : NocturneTheme.accent;
+    return Semantics(
+      button: true,
+      label: '${revealed ? 'Answer' : 'Question'} ${index + 1}. $content',
+      hint: revealed ? 'Show question' : 'Reveal answer',
+      excludeSemantics: true,
+      child: Material(
+        color: NocturneTheme.surface,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(26),
+          side: BorderSide(color: accent.withValues(alpha: 0.35)),
+        ),
+        child: InkWell(
+          onTap: () => setState(() {
+            revealed ? _revealed.remove(index) : _revealed.add(index);
+          }),
+          child: Padding(
+            padding: EdgeInsets.all(focused ? 28 : 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        revealed ? 'THE DISCOVERY' : 'A MOMENT TO THINK',
+                        style: NocturneTheme.eyebrow.copyWith(
+                          color: accent,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '${index + 1}'.padLeft(2, '0'),
+                      style: TextStyle(color: accent, fontSize: 12),
+                    ),
+                  ],
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        isFlipped ? 'ANSWER' : 'QUESTION',
-                        style: GoogleFonts.inter(
-                          color: isFlipped ? CleanDarkTheme.goldAccent : CleanDarkTheme.cyanAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      Text(
-                        '#${index + 1}',
-                        style: GoogleFonts.inter(
-                          color: CleanDarkTheme.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
+                if (focused)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 230),
+                    child: Center(
+                      child: _cardText(content, index, revealed, true),
+                    ),
+                  )
+                else
                   Expanded(
                     child: Center(
                       child: SingleChildScrollView(
-                        child: Text(
-                          isFlipped ? card.answer : card.question,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            color: CleanDarkTheme.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            height: 1.3,
-                          ),
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: _cardText(content, index, revealed, false),
                       ),
                     ),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Click to flip',
-                        style: GoogleFonts.inter(
-                          color: CleanDarkTheme.textSecondary,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // SINGLE VIEW (LARGER ENLARGED CARD IN CENTER WITH 3D FLIP ANIMATION)
-  Widget _buildSingleView() {
-    final card = widget.flashcards[_currentIndex];
-
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: () => setState(() => _singleShowAnswer = !_singleShowAnswer),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) {
-                  final rotate = Tween(begin: pi, end: 0.0).animate(animation);
-                  return AnimatedBuilder(
-                    animation: rotate,
-                    child: child,
-                    builder: (context, widgetChild) {
-                      final isUnder =
-                          (ValueKey(_singleShowAnswer) != widgetChild?.key);
-                      var tilt = ((animation.value - 0.5).abs() - 0.5) * 0.003;
-                      tilt *= isUnder ? -1.0 : 1.0;
-                      final value = isUnder
-                          ? min(rotate.value, pi / 2)
-                          : rotate.value;
-                      return Transform(
-                        transform: Matrix4.rotationY(value)..setEntry(3, 2, tilt),
-                        alignment: Alignment.center,
-                        child: widgetChild,
-                      );
-                    },
-                  );
-                },
-                child: Container(
-                  key: ValueKey(_singleShowAnswer),
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 580, minHeight: 260),
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: CleanDarkTheme.surfaceCard,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: CleanDarkTheme.cyanAccent.withValues(alpha: 0.8),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _singleShowAnswer ? 'ANSWER' : 'QUESTION',
-                        style: GoogleFonts.inter(
-                          color: CleanDarkTheme.cyanAccent,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        _singleShowAnswer ? card.answer : card.question,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          color: CleanDarkTheme.textPrimary,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w600,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Click to flip',
-                        style: GoogleFonts.inter(
-                          color: CleanDarkTheme.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 16),
+                Divider(color: accent.withValues(alpha: 0.15)),
+                const SizedBox(height: 8),
+                Text(
+                  revealed
+                      ? 'Tap to revisit the question'
+                      : 'Tap to reveal the answer',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: NocturneTheme.muted,
+                    fontSize: 11,
                   ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 20),
-
-            // NAV CONTROLS: ←  1 / N  →
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: CleanDarkTheme.surfaceCard,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: CleanDarkTheme.surfaceBorder),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    iconSize: 18,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.arrow_back_ios_rounded),
-                    color: _currentIndex > 0 ? CleanDarkTheme.cyanAccent : CleanDarkTheme.textSecondary,
-                    onPressed: _currentIndex > 0
-                        ? () => setState(() {
-                              _currentIndex--;
-                              _singleShowAnswer = false;
-                            })
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    '${_currentIndex + 1} / ${widget.flashcards.length}',
-                    style: GoogleFonts.inter(
-                      color: CleanDarkTheme.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  IconButton(
-                    iconSize: 18,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.arrow_forward_ios_rounded),
-                    color: _currentIndex < widget.flashcards.length - 1
-                        ? CleanDarkTheme.cyanAccent
-                        : CleanDarkTheme.textSecondary,
-                    onPressed: _currentIndex < widget.flashcards.length - 1
-                        ? () => setState(() {
-                              _currentIndex++;
-                              _singleShowAnswer = false;
-                            })
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _cardText(String content, int index, bool revealed, bool focused) =>
+      AnimatedSwitcher(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        child: Text(
+          content,
+          key: ValueKey('$index-$revealed'),
+          textAlign: TextAlign.center,
+          style: focused
+              ? NocturneTheme.heading.copyWith(fontSize: 30, height: 1.3)
+              : const TextStyle(fontSize: 16, height: 1.6),
+        ),
+      );
 }

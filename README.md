@@ -12,7 +12,7 @@
 
 ## 📖 Overview
 
-**Just Paste** is an intelligent, cross-platform study assistant built with **Flutter & Dart** and hosted at [https://github.com/deeyooonn/Just-Paste](https://github.com/deeyooonn/Just-Paste). It empowers students, educators, and lifelong learners to effortlessly convert unorganized study material—including camera photos, clipboard text, PDFs, DOCX, and images—into structured, interactive 3D flashcard decks.
+**Just Paste** is an intelligent, cross-platform study assistant built with **Flutter & Dart** and hosted at [https://github.com/deeyooonn/Just-Paste](https://github.com/deeyooonn/Just-Paste). It empowers students, educators, and lifelong learners to effortlessly convert unorganized study material—including camera photos, clipboard text, PDFs, DOCX, and images—into structured, interactive flashcard decks.
 
 Powered by **Google Gemini AI** and **Firebase Cloud Firestore**, Just Paste delivers instant AI synthesis, real-time cross-device cloud sync, interactive flip decks, search/filter capabilities, and bookmarking.
 
@@ -26,16 +26,16 @@ Powered by **Google Gemini AI** and **Firebase Cloud Firestore**, Just Paste del
   - **📂 Multi-Doc Upload**: Natively process PDFs, PNG, JPG, WEBP, DOCX, and TXT files (up to 10MB).
 - **🎴 Instant AI Flashcards**:
   - Automatically synthesizes study material into high-yield, comprehensive Q&A flashcards.
-  - Interactive **3D Flip Card Animation** with smooth 180-degree rotation.
+  - Focused flashcards with a gentle answer reveal and a browsable grid.
   - Dual View Modes: **Grid View** (compact multi-card layout) & **Single Focus View** (enlarged single-card focus with `1 / N` counter).
 - **☁️ Cloud Sync & Saved Library**:
   - Real-time synchronization via **Firebase Cloud Firestore**.
   - **⭐ Star/Bookmarking System**: Filter saved decks by favorites.
   - **🔍 Search & Local Filter**: Search across document titles and card questions/answers.
 - **🎨 Dark Mode First Design**:
-  - Custom dark slate `#0D1117` aesthetic with glowing cyan accents (`#00E5FF`) and subtle circuit background patterns.
+  - Deep ink `#101017`, muted violet accents, warm ivory typography, and subtle celestial artwork. Bundled Inter and Cormorant Garamond fonts work offline.
 - **🛡️ Secure & Resilient**:
-  - Offline/Anonymous guest authentication fallback.
+  - Google login is required for new and anonymous users. Returning authenticated users retain their session; signing out clears protected navigation.
   - Built-in file size validation (10MB maximum limit).
   - Truncation repair algorithm to salvage incomplete AI responses cleanly.
 
@@ -47,9 +47,9 @@ Powered by **Google Gemini AI** and **Firebase Cloud Firestore**, Just Paste del
 | :--- | :--- |
 | **Repository** | [https://github.com/deeyooonn/Just-Paste](https://github.com/deeyooonn/Just-Paste) |
 | **Frontend Framework** | [Flutter 3.44+](https://flutter.dev) (Dart 3.12+) |
-| **Design System** | Material 3, Google Fonts (`Inter`), Custom Circuit Canvas Painter |
+| **Design System** | Material 3, bundled Inter / Cormorant Garamond, celestial vector artwork |
 | **AI Processing Engine** | [Google Gemini API](https://ai.google.dev/) (`google_generative_ai` REST SDK) |
-| **Authentication** | [Firebase Auth](https://firebase.google.com) (Google Sign-In & Anonymous Guest Auth) |
+| **Authentication** | [Firebase Auth](https://firebase.google.com) (Google Sign-In) |
 | **Database** | [Cloud Firestore](https://firebase.google.com/docs/firestore) (Real-time NoSQL Sync) |
 | **State & Environment** | `flutter_dotenv` for secure environment variable injection |
 
@@ -61,14 +61,11 @@ Powered by **Google Gemini AI** and **Firebase Cloud Firestore**, Just Paste del
 lib/
 ├── firebase_options.dart         # Auto-generated Firebase platform configuration
 ├── gemini_flashcard_service.dart # Isolated AI processing engine, JSON repair & DOCX parser
-└── main.dart                     # Entry point, Theme System, AuthGate, Dashboard & Results UI
-    ├── CleanDarkTheme            # Custom slate dark mode color system
-    ├── CircuitPatternPainter     # Custom canvas background painter
-    ├── ProcessedDocument         # Firestore document model
-    ├── AuthGate                  # Real-time authentication listener & auto-guest router
-    ├── MainDashboardScreen       # Document upload, camera, & dropzone interface
-    ├── ProfileScreen             # User profile, cloud stats, search bar, & saved library
-    └── ResultsScreen             # Interactive 3D flip card deck & Cloud Save action
+├── main.dart                     # Auth routing, data models, library, results & service calls
+└── ui/
+    ├── nocturne_theme.dart       # Shared palette, bundled typefaces & celestial artwork
+    ├── login_screen.dart         # Google sign-in, loading & recovery states
+    └── dashboard_view.dart       # Notes editor, clipboard, camera & file import
 ```
 
 ---
@@ -132,3 +129,23 @@ flutter run -d chrome --web-port 3000
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for details.
+
+## Interface and authentication checks
+
+The native Flutter interface uses `lib/ui/nocturne_theme.dart`,
+`lib/ui/login_screen.dart`, and `lib/ui/dashboard_view.dart`. Google is the
+existing sign-in provider; cancelled or failed sign-in attempts remain on login.
+Previously cached anonymous sessions also see login.
+
+Run `flutter analyze` and `flutter test` to check routing, sign-in loading/error
+states, protected route cleanup, note input, library filters, flashcard
+interaction, and narrow layouts at normal and doubled text sizes. To generate
+local screen previews with sample data, run:
+
+```sh
+flutter test --dart-define=CAPTURE_UI_PREVIEWS=true
+```
+
+Previews are written to `build/ui-previews/`. The tests do not sign into a real
+Google account or make Firestore/Gemini requests. Those services require the
+project's existing Firebase and API configuration.

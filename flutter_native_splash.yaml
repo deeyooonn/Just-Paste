@@ -1,13 +1,9 @@
+# Android's vector splash mark is maintained in android/app/src/main/res.
+# Re-running the generator resets the custom native drawable/style entries.
 flutter_native_splash:
-  color: "#0D0F12"
-  image: assets/icon/splash_logo.png
-  color_dark: "#0D0F12"
-  image_dark: assets/icon/splash_logo.png
-
+  color: "#101017"
+  color_dark: "#101017"
   android_12:
-    color: "#0D0F12"
-    image: assets/icon/splash_logo.png
-    color_dark: "#0D0F12"
-    image_dark: assets/icon/splash_logo.png
-
+    color: "#101017"
+    color_dark: "#101017"
   web: false
